@@ -20,6 +20,9 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
   const [remoteIsMuted, setRemoteIsMuted] = useState(false);
   const [remoteIsVideoOff, setRemoteIsVideoOff] = useState(false);
 
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+
   const [isConnected, setIsConnected] = useState(false);
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
@@ -252,16 +255,75 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
     }
   };
 
+  const toggleScreenShare = async () => {
+    if (!isScreenSharing) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        alert("Compartir pantalla no está disponible en este entorno. Por favor, abre la aplicación en una nueva pestaña (haciendo clic en el botón de abrir en nueva ventana).");
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        screenStreamRef.current = stream;
+        const screenTrack = stream.getVideoTracks()[0];
+
+        // Ensure when user clicks "Stop sharing" from browser native UI it reverts
+        screenTrack.onended = () => {
+          revertToCamera();
+        };
+
+        const sender = peerConnection.current?.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(screenTrack);
+        }
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+
+        setIsScreenSharing(true);
+        // Automatically unmute video icon if they start sharing screen
+        if (isVideoOff) toggleVideo();
+      } catch (error) {
+        console.error("Error sharing screen: ", error);
+      }
+    } else {
+      revertToCamera();
+    }
+  };
+
+  const revertToCamera = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+
+    const videoTrack = localStream?.getVideoTracks()[0];
+    if (videoTrack) {
+      const sender = peerConnection.current?.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) {
+        sender.replaceTrack(videoTrack);
+      }
+    }
+
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+
+    setIsScreenSharing(false);
+  };
+
   return {
     localVideoRef,
     remoteVideoRef,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     remoteIsMuted,
     remoteIsVideoOff,
     isConnected,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
     remoteStream
   };
 }

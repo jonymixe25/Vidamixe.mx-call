@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Copy, Check } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Copy, Check, MonitorUp } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 
 interface VideoRoomProps {
@@ -13,18 +13,21 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
     remoteVideoRef,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     remoteIsMuted,
     remoteIsVideoOff,
     isConnected,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
     remoteStream
   } = useWebRTC(roomId, onLeave);
 
   const [copied, setCopied] = useState(false);
 
-  const copyRoomId = () => {
-    navigator.clipboard.writeText(roomId);
+  const copyRoomLink = () => {
+    const inviteLink = `${window.location.origin}/?room=${roomId}`;
+    navigator.clipboard.writeText(inviteLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -40,13 +43,15 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
         </h1>
         
         <div className="flex items-center gap-3">
-          <span className="text-neutral-400 text-sm hidden sm:inline-block">ID de sala:</span>
+          <span className="text-neutral-400 text-sm hidden sm:inline-block">Enlace de invitación:</span>
           <div className="bg-neutral-800 rounded-lg px-3 py-1.5 flex items-center gap-2 border border-neutral-700">
-            <span className="text-white font-mono text-sm">{roomId}</span>
+            <span className="text-neutral-300 font-mono text-sm max-w-[120px] sm:max-w-xs truncate">
+              {window.location.origin}/?room={roomId}
+            </span>
             <button 
-              onClick={copyRoomId} 
+              onClick={copyRoomLink} 
               className="text-neutral-400 hover:text-white transition-colors"
-              title="Copiar ID"
+              title="Copiar enlace"
             >
               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             </button>
@@ -66,7 +71,7 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
               </div>
               <h2 className="text-xl font-medium text-white mb-2">Esperando al otro participante...</h2>
               <p className="text-neutral-400 max-w-md">
-                Comparte el ID de la sala <span className="font-mono text-blue-400">{roomId}</span> con tu invitado para que pueda unirse a la videollamada.
+                Copia el enlace de invitación de la esquina superior derecha y compártelo o dales el ID <span className="font-mono text-blue-400">{roomId}</span> para que se unan.
               </p>
             </div>
           )}
@@ -104,7 +109,7 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover scale-x-[-1] ${!isVideoOff ? 'opacity-100' : 'opacity-0'}`}
+            className={`w-full h-full object-cover ${!isScreenSharing ? 'scale-x-[-1]' : ''} ${!isVideoOff ? 'opacity-100' : 'opacity-0'}`}
           />
           <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
             {isMuted && <MicOff className="w-4 h-4 text-red-500" />}
@@ -132,14 +137,28 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
         <button
           id="btn-toggle-video"
           onClick={toggleVideo}
+          disabled={isScreenSharing}
           className={`p-4 rounded-full transition-all duration-200 shadow-lg flex items-center justify-center ${
             isVideoOff 
               ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30' 
               : 'bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700'
-          }`}
+          } ${isScreenSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
           title={isVideoOff ? "Activar cámara" : "Apagar cámara"}
         >
           {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+        </button>
+
+        <button
+          id="btn-toggle-screen"
+          onClick={toggleScreenShare}
+          className={`p-4 rounded-full transition-all duration-200 shadow-lg flex items-center justify-center ${
+            isScreenSharing 
+              ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' 
+              : 'bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700'
+          }`}
+          title={isScreenSharing ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+        >
+          <MonitorUp className="w-6 h-6" />
         </button>
 
         <div className="h-10 w-px bg-neutral-800 mx-2"></div>

@@ -3,7 +3,8 @@
   "description": "Una aplicación web de video llamadas privadas peer-to-peer con WebRTC.",
   "requestFramePermissions": [
     "camera",
-    "microphone"
+    "microphone",
+    "display-capture"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
