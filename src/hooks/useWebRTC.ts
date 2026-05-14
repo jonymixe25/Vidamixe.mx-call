@@ -27,6 +27,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
+  const joinedRoomRef = useRef(false);
 
   // Initialize Media Devices
   useEffect(() => {
@@ -45,9 +46,6 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
-
-        socket.connect();
-        socket.emit('join-room', roomId);
       } catch (error) {
         console.error('Error accessing media devices.', error);
         alert('No se pudo acceder a la cámara y micrófono. Por favor permite el acceso y recarga la página.');
@@ -65,6 +63,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
         peerConnection.current.close();
         peerConnection.current = null;
       }
+      joinedRoomRef.current = false;
       socket.disconnect();
     };
   }, [roomId]);
@@ -76,7 +75,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnection.current = pc;
-    iceCandidatesQueue.current = [];
+    // Do not clear the queue here, preserving any early candidates
 
     if (localStream) {
       localStream.getTracks().forEach(track => {
@@ -85,6 +84,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
     }
 
     pc.ontrack = (event) => {
+      console.log('Received remote track', event.streams[0]);
       const stream = event.streams[0];
       setRemoteStream(stream);
       if (remoteVideoRef.current) {
@@ -99,6 +99,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
     };
 
     pc.oniceconnectionstatechange = () => {
+      console.log('ICE connection state:', pc.iceConnectionState);
       if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
         setIsConnected(true);
         // Reset remote state to defaults when connected just in case
@@ -145,7 +146,11 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
         
         // flush queue
         for (const candidate of iceCandidatesQueue.current) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch(e) {
+            console.error('Error adding queued ICE candidate', e);
+          }
         }
         iceCandidatesQueue.current = [];
 
@@ -165,7 +170,11 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
           await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           // flush queue
           for (const candidate of iceCandidatesQueue.current) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch(e) {
+              console.error('Error adding queued ICE candidate', e);
+            }
           }
           iceCandidatesQueue.current = [];
         } catch (error) {
@@ -176,16 +185,15 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
 
     const handleIceCandidate = async (payload: { candidate: any }) => {
       const pc = peerConnection.current;
-      if (pc) {
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
         try {
-          if (pc.remoteDescription) {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          } else {
-            iceCandidatesQueue.current.push(payload.candidate);
-          }
+          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
         } catch (error) {
           console.error('Error adding ICE candidate:', error);
         }
+      } else {
+        console.log('Queueing ICE candidate');
+        iceCandidatesQueue.current.push(payload.candidate);
       }
     };
 
@@ -205,6 +213,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
         peerConnection.current.close();
         peerConnection.current = null;
       }
+      iceCandidatesQueue.current = [];
     });
 
     socket.on('peer-toggled-media', (payload: { isMuted?: boolean; isVideoOff?: boolean }) => {
@@ -220,6 +229,12 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
       }
     });
 
+    if (!joinedRoomRef.current) {
+      socket.connect();
+      socket.emit('join-room', roomId);
+      joinedRoomRef.current = true;
+    }
+
     return () => {
       socket.off('user-connected', handleUserConnected);
       socket.off('offer', handleOffer);
@@ -229,7 +244,7 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
       socket.off('peer-toggled-media');
       socket.off('room-full');
     };
-  }, [localStream, createPeerConnection, onRoomFull]);
+  }, [localStream, createPeerConnection, onRoomFull, roomId]);
 
   const toggleMute = () => {
     if (localStream) {
