@@ -1,0 +1,11 @@
+{
+  "name": "Sala Privada",
+  "description": "Una aplicación web de video llamadas privadas peer-to-peer con WebRTC.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
