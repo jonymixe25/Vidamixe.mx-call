@@ -64,7 +64,6 @@ export function useWebRTC(roomId: string, onRoomFull?: () => void) {
         peerConnection.current = null;
       }
       joinedRoomRef.current = false;
-      socket.disconnect();
     };
   }, [roomId]);
 

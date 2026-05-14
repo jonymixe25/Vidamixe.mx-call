@@ -59,49 +59,47 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
         </div>
       </div>
 
-      {/* Video Grid */}
-      <div className="flex-1 w-full max-w-6xl p-4 sm:p-8 flex flex-col md:flex-row gap-4 items-stretch justify-center relative">
+      {/* Video Area */}
+      <div className="flex-1 w-full relative bg-black overflow-hidden">
         
         {/* Remote Video (Main) */}
-        <div className="flex-1 bg-neutral-900 rounded-2xl overflow-hidden relative border border-neutral-800 shadow-2xl">
-          {!remoteStream && !isConnected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-24 h-24 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
-                <Video className="w-10 h-10 text-neutral-600" />
-              </div>
-              <h2 className="text-xl font-medium text-white mb-2">Esperando al otro participante...</h2>
-              <p className="text-neutral-400 max-w-md">
-                Copia el enlace de invitación de la esquina superior derecha y compártelo o dales el ID <span className="font-mono text-blue-400">{roomId}</span> para que se unan.
-              </p>
+        {!remoteStream && !isConnected && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0">
+            <div className="w-24 h-24 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
+              <Video className="w-10 h-10 text-neutral-600" />
             </div>
-          )}
-          {remoteIsVideoOff && isConnected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-900 z-10">
-              <div className="w-32 h-32 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
-                <VideoOff className="w-12 h-12 text-neutral-600" />
-              </div>
-              <p className="text-neutral-400 text-lg">El invitado ha apagado su cámara</p>
+            <h2 className="text-xl font-medium text-white mb-2">Esperando al otro participante...</h2>
+            <p className="text-neutral-400 max-w-md">
+              Copia el enlace de invitación de la esquina superior derecha y compártelo o dales el ID <span className="font-mono text-blue-400">{roomId}</span> para que se unan.
+            </p>
+          </div>
+        )}
+        {remoteIsVideoOff && isConnected && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-900 z-10">
+            <div className="w-32 h-32 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
+              <VideoOff className="w-12 h-12 text-neutral-600" />
             </div>
-          )}
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className={`w-full h-full object-cover ${isConnected && !remoteIsVideoOff ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
-          />
-          {isConnected && (
-            <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 z-20 flex items-center gap-2">
-              <span className="text-white text-sm font-medium">Invitado</span>
-              {remoteIsMuted && <MicOff className="w-4 h-4 text-red-500" />}
-            </div>
-          )}
-        </div>
+            <p className="text-neutral-400 text-lg">El invitado ha apagado su cámara</p>
+          </div>
+        )}
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className={`absolute inset-0 w-full h-full object-cover z-0 ${isConnected && !remoteIsVideoOff ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
+        />
+        {isConnected && (
+          <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 z-20 flex items-center gap-2">
+            <span className="text-white text-sm font-medium">Invitado</span>
+            {remoteIsMuted && <MicOff className="w-4 h-4 text-red-500" />}
+          </div>
+        )}
 
-        {/* Local Video (Floating / Sidebar) */}
-        <div className="w-full md:w-80 lg:w-96 aspect-video md:aspect-[3/4] bg-neutral-900 rounded-2xl overflow-hidden relative shadow-xl border border-neutral-800 shrink-0 transform">
+        {/* Local Video (Floating / PIP) */}
+        <div className="absolute bottom-4 right-4 w-28 sm:w-48 lg:w-64 aspect-[3/4] sm:aspect-video bg-neutral-900 rounded-xl overflow-hidden shadow-2xl border border-neutral-700 z-30">
           {isVideoOff && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-800 z-10">
-              <VideoOff className="w-10 h-10 text-neutral-500" />
+              <VideoOff className="w-8 h-8 text-neutral-500" />
             </div>
           )}
           <video
@@ -111,9 +109,9 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
             muted
             className={`w-full h-full object-cover ${!isScreenSharing ? 'scale-x-[-1]' : ''} ${!isVideoOff ? 'opacity-100' : 'opacity-0'}`}
           />
-          <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
-            {isMuted && <MicOff className="w-4 h-4 text-red-500" />}
-            <span className="text-white text-sm font-medium">Tú</span>
+          <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 flex items-center gap-1.5">
+            {isMuted && <MicOff className="w-3 h-3 text-red-500" />}
+            <span className="text-white text-xs font-medium">Tú</span>
           </div>
         </div>
 
