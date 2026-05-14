@@ -16,8 +16,25 @@ async function startServer() {
     }
   });
 
+  function getActiveRooms() {
+    const rooms: { id: string; count: number }[] = [];
+    io.sockets.adapter.rooms.forEach((set, roomId) => {
+      // If the room ID is not a socket ID (which are stored in sids)
+      if (!io.sockets.adapter.sids.has(roomId)) {
+        rooms.push({ id: roomId, count: set.size });
+      }
+    });
+    return rooms;
+  }
+
   // Socket.IO signaling logic for WebRTC
   io.on("connection", (socket) => {
+    socket.emit("active-rooms", getActiveRooms());
+
+    socket.on("get-rooms", () => {
+      socket.emit("active-rooms", getActiveRooms());
+    });
+
     socket.on("join-room", (roomId: string) => {
       // Check room size
       const clients = io.sockets.adapter.rooms.get(roomId);
@@ -29,6 +46,7 @@ async function startServer() {
       }
 
       socket.join(roomId);
+      io.emit("active-rooms", getActiveRooms());
       
       // If there's already a user in the room, tell everyone a new user connected
       socket.broadcast.to(roomId).emit("user-connected", socket.id);
@@ -36,6 +54,17 @@ async function startServer() {
       socket.on("disconnecting", () => {
         socket.broadcast.to(roomId).emit("user-disconnected", socket.id);
       });
+
+      socket.on("toggle-media", (payload) => {
+        socket.broadcast.to(roomId).emit("peer-toggled-media", payload);
+      });
+    });
+
+    socket.on("disconnect", () => {
+      // Wait a tick for the socket to actually leave the room
+      setTimeout(() => {
+        io.emit("active-rooms", getActiveRooms());
+      }, 0);
     });
 
     // WebRTC Signaling Events

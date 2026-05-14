@@ -13,11 +13,13 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
     remoteVideoRef,
     isMuted,
     isVideoOff,
+    remoteIsMuted,
+    remoteIsVideoOff,
     isConnected,
     toggleMute,
     toggleVideo,
     remoteStream
-  } = useWebRTC(roomId);
+  } = useWebRTC(roomId, onLeave);
 
   const [copied, setCopied] = useState(false);
 
@@ -57,7 +59,7 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
         
         {/* Remote Video (Main) */}
         <div className="flex-1 bg-neutral-900 rounded-2xl overflow-hidden relative border border-neutral-800 shadow-2xl">
-          {!remoteStream && (
+          {!remoteStream && !isConnected && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
               <div className="w-24 h-24 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
                 <Video className="w-10 h-10 text-neutral-600" />
@@ -68,38 +70,46 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
               </p>
             </div>
           )}
+          {remoteIsVideoOff && isConnected && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-900 z-10">
+              <div className="w-32 h-32 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
+                <VideoOff className="w-12 h-12 text-neutral-600" />
+              </div>
+              <p className="text-neutral-400 text-lg">El invitado ha apagado su cámara</p>
+            </div>
+          )}
           <video
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover ${isConnected ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
+            className={`w-full h-full object-cover ${isConnected && !remoteIsVideoOff ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
           />
           {isConnected && (
-            <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+            <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 z-20 flex items-center gap-2">
               <span className="text-white text-sm font-medium">Invitado</span>
+              {remoteIsMuted && <MicOff className="w-4 h-4 text-red-500" />}
             </div>
           )}
         </div>
 
         {/* Local Video (Floating / Sidebar) */}
-        <div className="w-full md:w-80 lg:w-96 aspect-video md:aspect-[3/4] bg-neutral-900 rounded-2xl overflow-hidden relative shadow-xl border border-neutral-800 shrink-0 transform scale-x-[-1]">
+        <div className="w-full md:w-80 lg:w-96 aspect-video md:aspect-[3/4] bg-neutral-900 rounded-2xl overflow-hidden relative shadow-xl border border-neutral-800 shrink-0 transform">
+          {isVideoOff && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-800 z-10">
+              <VideoOff className="w-10 h-10 text-neutral-500" />
+            </div>
+          )}
           <video
             ref={localVideoRef}
             autoPlay
             playsInline
             muted
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover scale-x-[-1] ${!isVideoOff ? 'opacity-100' : 'opacity-0'}`}
           />
-          <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 scale-x-[-1]">
+          <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-2">
+            {isMuted && <MicOff className="w-4 h-4 text-red-500" />}
             <span className="text-white text-sm font-medium">Tú</span>
           </div>
-          
-          {(isMuted || isVideoOff) && (
-            <div className="absolute top-4 right-4 flex gap-2 scale-x-[-1]">
-              {isMuted && <div className="bg-red-500 text-white p-1.5 rounded-md shadow-md"><MicOff className="w-4 h-4" /></div>}
-              {isVideoOff && <div className="bg-red-500 text-white p-1.5 rounded-md shadow-md"><VideoOff className="w-4 h-4" /></div>}
-            </div>
-          )}
         </div>
 
       </div>
@@ -137,9 +147,8 @@ export function VideoRoom({ roomId, onLeave }: VideoRoomProps) {
         <button
           id="btn-leave-room"
           onClick={() => {
-            if (confirm('¿Seguro que deseas salir de la sala?')) {
-              onLeave();
-            }
+            // Remove native confirm since it might be blocked in the iframe preview
+            onLeave();
           }}
           className="p-4 rounded-full bg-red-600 hover:bg-red-700 text-white transition-all duration-200 shadow-lg border border-red-500 flex items-center justify-center"
           title="Colgar"
